@@ -16,6 +16,14 @@ class ColumnRepository extends ServiceEntityRepository
         parent::__construct($registry, Column::class);
     }
 
+    public function findByBoardOrdered(\App\Entity\Board $board): array
+    {
+        return $this->createQueryBuilder('c')
+            ->andWhere('c.board = :b')->setParameter('b', $board)
+            ->orderBy('c.position', 'ASC')
+            ->getQuery()->getResult();
+    }
+
 //    /**
 //     * @return Column[] Returns an array of Column objects
 //     */

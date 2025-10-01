@@ -15,6 +15,15 @@ class CardRepository extends ServiceEntityRepository
     {
         parent::__construct($registry, Card::class);
     }
+ 
+    public function findByColumnOrdered(\App\Entity\Column $column): array
+    {
+        return $this->createQueryBuilder('t')
+            ->andWhere('t.parentColumn = :c')
+            ->setParameter('c', $column)
+            ->orderBy('t.position', 'ASC')
+            ->getQuery()->getResult();
+    }
 
     //    /**
     //     * @return Card[] Returns an array of Card objects
