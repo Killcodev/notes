@@ -1,0 +1,84 @@
+{# templates/kanban/board.html.twig #}
+{% extends 'base.html.twig' %}
+{% block title %}Kanban – {{ board.name }}{% endblock %}
+
+{% block body %}
+<link rel="stylesheet" href="https://unpkg.com/@picocss/pico@latest/css/pico.min.css">
+<script src="https://unpkg.com/sortablejs@1.15.2/modular/sortable.complete.esm.js" type="module"></script>
+
+<style>
+.board { display:grid; grid-template-columns:repeat(auto-fill,minmax(320px,1fr)); gap:16px }
+.column { background:#f7f7f8; border-radius:12px; padding:12px }
+.column-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px }
+.card { background:#fff; border-radius:10px; padding:10px; margin-bottom:8px; box-shadow:0 1px 3px rgba(0,0,0,.08) }
+.drag-ghost { opacity:.6 } .drag-chosen { box-shadow:0 0 0 2px #999 inset }
+</style>
+
+<main class="container">
+  <h1>{{ board.name }}</h1>
+  <div id="columns" class="board">
+    {% for col in columns %}
+      <section class="column" data-column-id="{{ col.id }}">
+        <div class="column-header">
+          <h3>{{ col.title }}</h3>
+          <small>#{{ col.position }}</small>
+        </div>
+        <div class="cards" data-column-cards>
+          {% for card in cardsByCol[col.id] %}
+            <article class="card" data-card-id="{{ card.id }}">
+              <strong>{{ card.title }}</strong>
+              {% if card.description %}
+                <p style="margin:6px 0 0 0">{{ card.description }}</p>
+              {% endif %}
+            </article>
+          {% endfor %}
+        </div>
+      </section>
+    {% endfor %}
+  </div>
+</main>
+
+<script type="module">
+import Sortable from 'https://unpkg.com/sortablejs@1.15.2/modular/sortable.core.esm.js';
+
+const csrf = '{{ csrf_token("kanban") }}';
+
+// sorting/moving columns
+new Sortable(document.getElementById('columns'), {
+  animation: 150,
+  ghostClass: 'drag-ghost',
+  chosenClass: 'drag-chosen',
+  handle: '.column-header',
+  onEnd: async () => {
+    const ids = [...document.querySelectorAll('#columns .column')].map(c => parseInt(c.dataset.columnId));
+    await fetch('{{ path("kanban_reorder_columns") }}', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ orderedColumnIds: ids, _token: csrf })
+    });
+  }
+});
+
+// sorting/moving cards
+document.querySelectorAll('[data-column-cards]').forEach(el => {
+  new Sortable(el, {
+    group: 'cards',
+    animation: 150,
+    ghostClass: 'drag-ghost',
+    chosenClass: 'drag-chosen',
+    onAdd: onChange, onUpdate: onChange
+  });
+});
+
+async function onChange(evt) {
+  const cardEl = evt.item;
+  const cardId = parseInt(cardEl.dataset.cardId);
+  const toColumnId = parseInt(evt.to.closest('.column').dataset.columnId);
+  const newIndex = [...evt.to.children].indexOf(cardEl);
+
+  await fetch('{{ path("kanban_move_card") }}', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ cardId, toColumnId, newIndex, _token: csrf })
+  });
+}
+</script>
+{% endblock %}
