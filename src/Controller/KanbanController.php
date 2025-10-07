@@ -5,13 +5,13 @@ namespace App\Controller;
 use App\Entity\Board;
 use App\Entity\Card;
 use App\Entity\Column;
-use App\Repository\BoardRepository;
 use App\Repository\CardRepository;
 use App\Repository\ColumnRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
 
 #[Route('/kanban')]
@@ -92,5 +92,192 @@ class KanbanController extends AbstractController
         });
 
         return new JsonResponse(['ok'=>true]);
+    }
+
+    #[Route('/{id}/columns', name: 'kanban_add_column', methods: ['POST'])]
+    public function addColumn(Board $board, Request $request): Response
+    {
+        $token = (string)$request->request->get('_token');
+        if (!$this->isCsrfTokenValid('column_add'.$board->getId(), $token)) {
+            $this->addFlash('error', 'Invalid CSRF token.');
+            return $this->redirectToRoute('kanban_board', ['id' => $board->getId()]);
+        }
+
+        $title = trim((string)$request->request->get('title'));
+        if ($title === '') {
+            $this->addFlash('error', 'Provide a column name.');
+            return $this->redirectToRoute('kanban_board', ['id' => $board->getId()]);
+        }
+
+        $column = (new Column())
+            ->setBoard($board)
+            ->setTitle($title)
+            ->setPosition($this->colRepo->nextPositionForBoard($board));
+
+        $this->em->persist($column);
+        $this->em->flush();
+
+        $this->addFlash('success', 'Column created.');
+
+        return $this->redirectToRoute('kanban_board', ['id' => $board->getId()]);
+    }
+
+    #[Route('/columns/{id}/rename', name: 'kanban_column_rename', methods: ['POST'])]
+    public function renameColumn(Column $column, Request $request): Response
+    {
+        $board = $column->getBoard();
+        if (!$board) {
+            throw $this->createNotFoundException('Board not found.');
+        }
+
+        $token = (string)$request->request->get('_token');
+        if (!$this->isCsrfTokenValid('column_rename'.$column->getId(), $token)) {
+            $this->addFlash('error', 'Invalid CSRF token.');
+            return $this->redirectToRoute('kanban_board', ['id' => $board->getId()]);
+        }
+
+        $title = trim((string)$request->request->get('title'));
+        if ($title === '') {
+            $this->addFlash('error', 'Provide a column name.');
+        } else {
+            $column->setTitle($title);
+            $this->em->flush();
+            $this->addFlash('success', 'Column updated.');
+        }
+
+        return $this->redirectToRoute('kanban_board', ['id' => $board->getId()]);
+    }
+
+    #[Route('/columns/{id}/delete', name: 'kanban_column_delete', methods: ['POST'])]
+    public function deleteColumn(Column $column, Request $request): Response
+    {
+        $board = $column->getBoard();
+        if (!$board) {
+            throw $this->createNotFoundException('Board not found.');
+        }
+
+        $token = (string)$request->request->get('_token');
+        if (!$this->isCsrfTokenValid('column_delete'.$column->getId(), $token)) {
+            $this->addFlash('error', 'Invalid CSRF token.');
+            return $this->redirectToRoute('kanban_board', ['id' => $board->getId()]);
+        }
+
+        $boardId = $board->getId();
+
+        $this->em->wrapInTransaction(function () use ($column, $board) {
+            $this->em->remove($column);
+            $this->em->flush();
+
+            $remaining = $this->colRepo->findByBoardOrdered($board);
+            foreach ($remaining as $index => $col) {
+                $col->setPosition($index);
+            }
+
+            $this->em->flush();
+        });
+
+        $this->addFlash('success', 'Column deleted.');
+
+        return $this->redirectToRoute('kanban_board', ['id' => $boardId]);
+    }
+
+    #[Route('/columns/{id}/cards', name: 'kanban_card_add', methods: ['POST'])]
+    public function addCard(Column $column, Request $request): Response
+    {
+        $board = $column->getBoard();
+        if (!$board) {
+            throw $this->createNotFoundException('Board not found.');
+        }
+
+        $token = (string)$request->request->get('_token');
+        if (!$this->isCsrfTokenValid('card_add'.$column->getId(), $token)) {
+            $this->addFlash('error', 'Invalid CSRF token.');
+            return $this->redirectToRoute('kanban_board', ['id' => $board->getId()]);
+        }
+
+        $title = trim((string)$request->request->get('title'));
+        $description = trim((string)$request->request->get('description'));
+
+        if ($title === '') {
+            $this->addFlash('error', 'Provide a card title.');
+            return $this->redirectToRoute('kanban_board', ['id' => $board->getId()]);
+        }
+
+        $card = (new Card())
+            ->setParentColumn($column)
+            ->setTitle($title)
+            ->setDescription($description !== '' ? $description : null)
+            ->setPosition($this->cardRepo->nextPositionForColumn($column));
+
+        $this->em->persist($card);
+        $this->em->flush();
+
+        $this->addFlash('success', 'Card created.');
+
+        return $this->redirectToRoute('kanban_board', ['id' => $board->getId(), '_fragment' => 'card-'.$card->getId()]);
+    }
+
+    #[Route('/cards/{id}/rename', name: 'kanban_card_rename', methods: ['POST'])]
+    public function renameCard(Card $card, Request $request): Response
+    {
+        $column = $card->getParentColumn();
+        $board = $column?->getBoard();
+        if (!$column || !$board) {
+            throw $this->createNotFoundException('Card or parent column not found.');
+        }
+
+        $token = (string)$request->request->get('_token');
+        if (!$this->isCsrfTokenValid('card_rename'.$card->getId(), $token)) {
+            $this->addFlash('error', 'Invalid CSRF token.');
+            return $this->redirectToRoute('kanban_board', ['id' => $board->getId()]);
+        }
+
+        $title = trim((string)$request->request->get('title'));
+        $description = trim((string)$request->request->get('description'));
+
+        if ($title === '') {
+            $this->addFlash('error', 'Provide a card title.');
+        } else {
+            $card->setTitle($title);
+            $card->setDescription($description !== '' ? $description : null);
+            $this->em->flush();
+            $this->addFlash('success', 'Card updated.');
+        }
+
+        return $this->redirectToRoute('kanban_board', ['id' => $board->getId(), '_fragment' => 'card-'.$card->getId()]);
+    }
+
+    #[Route('/cards/{id}/delete', name: 'kanban_card_delete', methods: ['POST'])]
+    public function deleteCard(Card $card, Request $request): Response
+    {
+        $column = $card->getParentColumn();
+        $board = $column?->getBoard();
+        if (!$column || !$board) {
+            throw $this->createNotFoundException('Card or parent column not found.');
+        }
+
+        $token = (string)$request->request->get('_token');
+        if (!$this->isCsrfTokenValid('card_delete'.$card->getId(), $token)) {
+            $this->addFlash('error', 'Invalid CSRF token.');
+            return $this->redirectToRoute('kanban_board', ['id' => $board->getId()]);
+        }
+
+        $boardId = $board->getId();
+
+        $this->em->wrapInTransaction(function () use ($card, $column) {
+            $this->em->remove($card);
+            $this->em->flush();
+
+            $remaining = $this->cardRepo->findByColumnOrdered($column);
+            foreach ($remaining as $index => $c) {
+                $c->setPosition($index);
+            }
+
+            $this->em->flush();
+        });
+
+        $this->addFlash('success', 'Card deleted.');
+
+        return $this->redirectToRoute('kanban_board', ['id' => $boardId]);
     }
 }

@@ -24,6 +24,18 @@ class ColumnRepository extends ServiceEntityRepository
             ->getQuery()->getResult();
     }
 
+    public function nextPositionForBoard(\App\Entity\Board $board): int
+    {
+        $max = $this->createQueryBuilder('c')
+            ->select('COALESCE(MAX(c.position), -1)')
+            ->andWhere('c.board = :board')
+            ->setParameter('board', $board)
+            ->getQuery()
+            ->getSingleScalarResult();
+
+        return ((int)$max) + 1;
+    }
+
 //    /**
 //     * @return Column[] Returns an array of Column objects
 //     */

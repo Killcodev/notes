@@ -21,7 +21,7 @@ class Board
     /**
      * @var Collection<int, Column>
      */
-    #[ORM\OneToMany(targetEntity: Column::class, mappedBy: 'board')]
+    #[ORM\OneToMany(targetEntity: Column::class, mappedBy: 'board', cascade: ['persist', 'remove'], orphanRemoval: true)]
     private Collection $columns;
 
     public function __construct()

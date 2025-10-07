@@ -3,35 +3,170 @@
 {% block title %}Kanban – {{ board.name }}{% endblock %}
 
 {% block body %}
-<link rel="stylesheet" href="https://unpkg.com/@picocss/pico@latest/css/pico.min.css">
 <script src="https://unpkg.com/sortablejs@1.15.2/modular/sortable.complete.esm.js" type="module"></script>
 
 <style>
 .board { display:grid; grid-template-columns:repeat(auto-fill,minmax(320px,1fr)); gap:16px }
-.column { background:#f7f7f8; border-radius:12px; padding:12px }
-.column-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px }
-.card { background:#fff; border-radius:10px; padding:10px; margin-bottom:8px; box-shadow:0 1px 3px rgba(0,0,0,.08) }
-.drag-ghost { opacity:.6 } .drag-chosen { box-shadow:0 0 0 2px #999 inset }
+.column { background:#f7f7f8; border-radius:14px; padding:16px; display:flex; flex-direction:column; max-height:80vh; overflow:auto; box-shadow:0 10px 30px rgba(15,23,42,.08) }
+.column-header { display:flex; justify-content:space-between; align-items:flex-start; gap:12px }
+.column-title h3 { margin:0; font-size:1.05rem; color:#0f172a }
+.column-title small { display:block; margin-top:4px; color:#64748b; font-size:0.75rem; letter-spacing:0.02em }
+.icon-button { background:transparent; border:0; padding:6px; border-radius:999px; cursor:pointer; line-height:1; font-size:1.1rem; color:#475569; transition:background .2s ease, transform .2s ease }
+.icon-button:hover, .icon-button:focus-visible { background:rgba(148,163,184,.2); outline:none; transform:scale(1.05) }
+.icon-button:active { transform:scale(0.95) }
+.plus-button { width:42px; height:42px; display:flex; align-items:center; justify-content:center; font-size:1.2rem; background:#1d4ed8; color:#fff; box-shadow:0 10px 25px rgba(29,78,216,.3) }
+.plus-button:hover, .plus-button:focus-visible { background:#1e40af; color:#fff }
+.panel { margin-top:14px; padding:16px; border-radius:12px; background:#fff; border:1px solid #e2e8f0; box-shadow:0 16px 30px rgba(15,23,42,.08) }
+.stacked-form { display:flex; flex-direction:column; gap:12px }
+.stacked-form input[type="text"], .stacked-form textarea { padding:10px 12px; border-radius:10px; border:1px solid #cbd5f5; background:#fff; font-size:0.95rem; color:#0f172a; transition:border-color .2s ease, box-shadow .2s ease }
+.stacked-form input[type="text"]:focus, .stacked-form textarea:focus { outline:none; border-color:#2563eb; box-shadow:0 0 0 3px rgba(37,99,235,.2) }
+.stacked-form textarea { resize:vertical; min-height:80px }
+.inline-actions { display:flex; gap:8px; flex-wrap:wrap }
+.primary-button { background:#2563eb; color:#fff; border:0; border-radius:10px; padding:8px 16px; font-weight:600; cursor:pointer; transition:background .2s ease }
+.primary-button:hover, .primary-button:focus-visible { background:#1d4ed8; outline:none }
+.ghost-button { background:transparent; border:0; color:#475569; font-weight:600; padding:8px 12px; border-radius:10px; cursor:pointer }
+.ghost-button:hover, .ghost-button:focus-visible { background:rgba(148,163,184,.2); outline:none }
+.danger-button { background:#ef4444; color:#fff; border:0; border-radius:10px; padding:8px 16px; font-weight:600; cursor:pointer; transition:background .2s ease }
+.danger-button:hover, .danger-button:focus-visible { background:#dc2626; outline:none }
+.cards { display:flex; flex-direction:column; gap:12px }
+.card { background:#fff; border-radius:12px; padding:14px; box-shadow:0 12px 28px rgba(15,23,42,.08); border:1px solid #e2e8f0 }
+.card-header { display:flex; justify-content:space-between; gap:12px; align-items:flex-start }
+.card-header strong { font-size:0.97rem; color:#0f172a }
+.card-body p { margin:6px 0 0 0; color:#475569; font-size:0.9rem }
+.card-adder { margin-top:14px }
+.is-hidden { display:none !important }
+.new-column { margin:24px 0 32px 0; display:flex; align-items:center; gap:16px }
+.new-column-description { font-size:0.9rem; color:#475569 }
+.sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0 }
+.drag-ghost { opacity:.6 }
+.drag-chosen { box-shadow:0 0 0 2px #7262ffff inset }
 </style>
 
 <main class="container">
   <h1>{{ board.name }}</h1>
+
+  <section class="new-column">
+    <button
+      type="button"
+      class="icon-button plus-button"
+      aria-label="Add column"
+      data-toggle-target="column-add-panel"
+      aria-expanded="false"
+      aria-controls="column-add-panel"
+    >+</button>
+    <p class="new-column-description">Add a fresh column whenever you need a new workflow lane.</p>
+  </section>
+
+  <div id="column-add-panel" class="panel is-hidden">
+    <form action="{{ path('kanban_add_column', { id: board.id }) }}" method="post" class="stacked-form">
+      <input type="hidden" name="_token" value="{{ csrf_token('column_add' ~ board.id) }}">
+      <label class="sr-only" for="column-title-new">Column title</label>
+      <input id="column-title-new" type="text" name="title" placeholder="Column title" required>
+      <div class="inline-actions">
+        <button type="submit" class="primary-button">Create column</button>
+        <button type="button" class="ghost-button" data-toggle-target="column-add-panel">Cancel</button>
+      </div>
+    </form>
+  </div>
+
   <div id="columns" class="board">
     {% for col in columns %}
-      <section class="column" data-column-id="{{ col.id }}">
+      <section class="column" data-column-id="{{ col.id }}" id="column-{{ col.id }}">
         <div class="column-header">
-          <h3>{{ col.title }}</h3>
-          <small>#{{ col.position }}</small>
+          <div class="column-title">
+            <h3>{{ col.title }}</h3>
+            <small>Order {{ col.position + 1 }}</small>
+          </div>
+          <button
+            type="button"
+            class="icon-button"
+            aria-label="Edit column"
+            data-toggle-target="column-editor-{{ col.id }}"
+            aria-expanded="false"
+            aria-controls="column-editor-{{ col.id }}"
+          >✏️</button>
         </div>
+
+        <div id="column-editor-{{ col.id }}" class="panel is-hidden">
+          <form action="{{ path('kanban_column_rename', { id: col.id }) }}" method="post" class="stacked-form">
+            <input type="hidden" name="_token" value="{{ csrf_token('column_rename' ~ col.id) }}">
+            <label class="sr-only" for="column-title-{{ col.id }}">Column title</label>
+            <input id="column-title-{{ col.id }}" type="text" name="title" value="{{ col.title }}" required>
+            <div class="inline-actions">
+              <button type="submit" class="primary-button">Save</button>
+              <button type="button" class="ghost-button" data-toggle-target="column-editor-{{ col.id }}">Cancel</button>
+            </div>
+          </form>
+          <form action="{{ path('kanban_column_delete', { id: col.id }) }}" method="post" class="stacked-form" onsubmit="return confirm('Delete column and its cards?');">
+            <input type="hidden" name="_token" value="{{ csrf_token('column_delete' ~ col.id) }}">
+            <button type="submit" class="danger-button">Delete column</button>
+          </form>
+        </div>
+
+        {% set columnCards = cardsByCol[col.id] ?? [] %}
         <div class="cards" data-column-cards>
-          {% for card in cardsByCol[col.id] %}
-            <article class="card" data-card-id="{{ card.id }}">
-              <strong>{{ card.title }}</strong>
+          {% for card in columnCards %}
+            <article class="card" data-card-id="{{ card.id }}" id="card-{{ card.id }}">
+              <div class="card-header">
+                <strong>{{ card.title }}</strong>
+                <button
+                  type="button"
+                  class="icon-button"
+                  aria-label="Edit card"
+                  data-toggle-target="card-editor-{{ card.id }}"
+                  aria-expanded="false"
+                  aria-controls="card-editor-{{ card.id }}"
+                >✏️</button>
+              </div>
               {% if card.description %}
-                <p style="margin:6px 0 0 0">{{ card.description }}</p>
+                <div class="card-body">
+                  <p>{{ card.description }}</p>
+                </div>
               {% endif %}
+
+              <div id="card-editor-{{ card.id }}" class="panel is-hidden">
+                <form action="{{ path('kanban_card_rename', { id: card.id }) }}" method="post" class="stacked-form">
+                  <input type="hidden" name="_token" value="{{ csrf_token('card_rename' ~ card.id) }}">
+                  <label class="sr-only" for="card-title-{{ card.id }}">Card title</label>
+                  <input id="card-title-{{ card.id }}" type="text" name="title" value="{{ card.title }}" required>
+                  <label class="sr-only" for="card-description-{{ card.id }}">Card description</label>
+                  <textarea id="card-description-{{ card.id }}" name="description" placeholder="Optional description">{{ card.description }}</textarea>
+                  <div class="inline-actions">
+                    <button type="submit" class="primary-button">Save</button>
+                    <button type="button" class="ghost-button" data-toggle-target="card-editor-{{ card.id }}">Cancel</button>
+                  </div>
+                </form>
+                <form action="{{ path('kanban_card_delete', { id: card.id }) }}" method="post" class="stacked-form" onsubmit="return confirm('Delete card?');">
+                  <input type="hidden" name="_token" value="{{ csrf_token('card_delete' ~ card.id) }}">
+                  <button type="submit" class="danger-button">Delete card</button>
+                </form>
+              </div>
             </article>
           {% endfor %}
+        </div>
+
+        <div class="card-adder">
+          <button
+            type="button"
+            class="icon-button plus-button"
+            aria-label="Add card"
+            data-toggle-target="add-card-{{ col.id }}"
+            aria-expanded="false"
+            aria-controls="add-card-{{ col.id }}"
+          >+</button>
+          <div id="add-card-{{ col.id }}" class="panel is-hidden">
+            <form class="stacked-form" action="{{ path('kanban_card_add', { id: col.id }) }}" method="post">
+              <input type="hidden" name="_token" value="{{ csrf_token('card_add' ~ col.id) }}">
+              <label class="sr-only" for="card-add-title-{{ col.id }}">Card title</label>
+              <input id="card-add-title-{{ col.id }}" type="text" name="title" placeholder="Card title" required>
+              <label class="sr-only" for="card-add-description-{{ col.id }}">Card description</label>
+              <textarea id="card-add-description-{{ col.id }}" name="description" placeholder="Optional description"></textarea>
+              <div class="inline-actions">
+                <button type="submit" class="primary-button">Create card</button>
+                <button type="button" class="ghost-button" data-toggle-target="add-card-{{ col.id }}">Cancel</button>
+              </div>
+            </form>
+          </div>
         </div>
       </section>
     {% endfor %}
@@ -80,5 +215,30 @@ async function onChange(evt) {
     body: JSON.stringify({ cardId, toColumnId, newIndex, _token: csrf })
   });
 }
+
+const toggleButtons = document.querySelectorAll('[data-toggle-target]');
+toggleButtons.forEach(btn => {
+  ['mousedown','touchstart'].forEach(evtName => btn.addEventListener(evtName, evt => evt.stopPropagation()));
+  btn.addEventListener('click', () => {
+    const targetId = btn.dataset.toggleTarget;
+    if (!targetId) return;
+    const panel = document.getElementById(targetId);
+    if (!panel) return;
+
+    const shouldShow = panel.classList.contains('is-hidden');
+    panel.classList.toggle('is-hidden', !shouldShow);
+
+    document.querySelectorAll(`[data-toggle-target="${targetId}"]`).forEach(trigger => {
+      trigger.setAttribute('aria-expanded', shouldShow ? 'true' : 'false');
+    });
+
+    if (shouldShow) {
+      const firstField = panel.querySelector('input, textarea');
+      if (firstField) {
+        firstField.focus();
+      }
+    }
+  });
+});
 </script>
 {% endblock %}

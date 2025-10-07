@@ -4,30 +4,54 @@
   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Kanban{% endblock %}</title>
-
-    {# miejsce na dodatkowe style z widoków potomnych #}
+    <title>{% block title %}Moja aplikacja{% endblock %}</title>
     {% block stylesheets %}
-      <link rel="stylesheet" href="{{ asset('css/app.css') }}">
+      <style>
+        :root { --sidebar-w: 280px; }
+        body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji"; }
+        .app { display:flex; min-height:100vh; }
+        .sidebar {
+          width: var(--sidebar-w);
+          background: #0f172a; /* slate-900 */
+          color: #e2e8f0;      /* slate-200 */
+          padding: 16px;
+          box-sizing: border-box;
+        }
+        .sidebar h2 { font-size: 1rem; margin: 0 0 12px 0; color: #cbd5e1; }
+        .boards { list-style: none; margin: 0 0 16px 0; padding: 0; }
+        .boards li { margin: 0; }
+        .boards a {
+          display:block; padding:8px 10px; border-radius:8px; text-decoration:none; color:#e2e8f0;
+        }
+        .boards a:hover { background:#1e293b; }
+        .new-board form { display:flex; gap:8px; }
+        .new-board input[type="text"] {
+          flex:1; padding:8px 10px; border-radius:8px; border:1px solid #334155; background:#0b1222; color:#e2e8f0;
+        }
+        .new-board button {
+          padding:8px 12px; border:0; border-radius:8px; background:#22c55e; color:#0b1222; font-weight:600; cursor:pointer;
+        }
+        .content { flex:1; padding:24px; background:#f8fafc; box-sizing:border-box; }
+        header, footer { color:#334155; }
+        @media (max-width: 900px) {
+          :root { --sidebar-w: 100%; }
+          .app { flex-direction: column; }
+          .sidebar { width: 100%; }
+        }
+      </style>
     {% endblock %}
   </head>
   <body>
-    <header>
-      <h1>Kanban</h1>
-      {# tu możesz dać menu #}
-    </header>
+    <div class="app">
+      <aside class="sidebar">
+        {{ render(controller('App\\Controller\\SidebarController::boards')) }}
+      </aside>
 
-    <main>
-      {% block body %}{% endblock %}
-    </main>
+      <div class="content">
+        {% block body %}{% endblock %}
+      </div>
+    </div>
 
-    <footer>
-      <small>&copy; {{ "now"|date("Y") }} Killcode</small>
-    </footer>
-
-    {# miejsce na skrypty JS z widoków potomnych #}
-    {% block javascripts %}
-      <script src="{{ asset('js/app.js') }}"></script>
-    {% endblock %}
+    {% block javascripts %}{% endblock %}
   </body>
 </html>

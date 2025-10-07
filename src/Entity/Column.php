@@ -29,7 +29,7 @@ class Column
     /**
      * @var Collection<int, Card>
      */
-    #[ORM\OneToMany(targetEntity: Card::class, mappedBy: 'parentColumn')]
+    #[ORM\OneToMany(targetEntity: Card::class, mappedBy: 'parentColumn', cascade: ['persist', 'remove'], orphanRemoval: true)]
     private Collection $cards;
 
     public function __construct()

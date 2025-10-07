@@ -25,7 +25,7 @@ class Card
 
     #[ORM\ManyToOne(inversedBy: 'cards')]
     #[ORM\JoinColumn(nullable: false)]
-    private ?column $parentColumn = null;
+    private ?Column $parentColumn = null;
 
     public function getId(): ?int
     {
@@ -68,12 +68,12 @@ class Card
         return $this;
     }
 
-    public function getParentColumn(): ?column
+    public function getParentColumn(): ?Column
     {
         return $this->parentColumn;
     }
 
-    public function setParentColumn(?column $parentColumn): static
+    public function setParentColumn(?Column $parentColumn): static
     {
         $this->parentColumn = $parentColumn;
 

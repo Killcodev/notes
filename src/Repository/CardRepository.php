@@ -25,6 +25,18 @@ class CardRepository extends ServiceEntityRepository
             ->getQuery()->getResult();
     }
 
+    public function nextPositionForColumn(\App\Entity\Column $column): int
+    {
+        $max = $this->createQueryBuilder('card')
+            ->select('COALESCE(MAX(card.position), -1)')
+            ->andWhere('card.parentColumn = :column')
+            ->setParameter('column', $column)
+            ->getQuery()
+            ->getSingleScalarResult();
+
+        return ((int)$max) + 1;
+    }
+
     //    /**
     //     * @return Card[] Returns an array of Card objects
     //     */

@@ -1,0 +1,21 @@
+{# templates/_sidebar.html.twig #}
+<section>
+  <h2>Kanbans</h2>
+  <ul class="boards">
+    {% for b in boards %}
+      <li>
+        <a href="{{ path('kanban_board', { id: b.id }) }}">{{ b.name }}</a>
+      </li>
+    {% else %}
+      <li><em>no boards</em></li>
+    {% endfor %}
+  </ul>
+
+  <div class="new-board">
+    <form action="{{ path('board_create') }}" method="post">
+      <input type="hidden" name="_token" value="{{ csrf_token('create_board') }}">
+      <input type="text" name="name" placeholder="New Board" required>
+      <button type="submit">+</button>
+    </form>
+  </div>
+</section>
