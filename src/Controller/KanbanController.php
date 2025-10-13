@@ -34,6 +34,55 @@ class KanbanController extends AbstractController
         return $this->render('kanban/board.html.twig', compact('board','columns','cardsByCol'));
     }
 
+    #[Route('/{id}/rename-board', name: 'kanban_board_rename', methods: ['POST'])]
+    public function renameBoard(Board $board, Request $request): Response
+    {
+        $token = (string)$request->request->get('_token');
+        if (!$this->isCsrfTokenValid('board_rename'.$board->getId(), $token)) {
+            $this->addFlash('error', 'Invalid CSRF token.');
+            return $request->isXmlHttpRequest()
+                ? new JsonResponse(['error' => 'Invalid CSRF token.'], 403)
+                : $this->redirectToRoute('kanban_board', ['id' => $board->getId()]);
+        }
+
+        $name = trim((string)$request->request->get('name'));
+        if ($name === '') {
+            $this->addFlash('error', 'Provide a board name.');
+            return $request->isXmlHttpRequest()
+                ? new JsonResponse(['error' => 'Provide a board name.'], 422)
+                : $this->redirectToRoute('kanban_board', ['id' => $board->getId()]);
+        }
+
+        $board->setName($name);
+        $this->em->flush();
+        $this->addFlash('success', 'Board updated.');
+
+        if ($request->isXmlHttpRequest()) {
+            return new JsonResponse(['ok' => true, 'name' => $board->getName()]);
+        }
+
+        return $this->redirectToRoute('kanban_board', ['id' => $board->getId()]);
+    }
+
+    #[Route('/{id}/delete-board', name: 'kanban_board_delete', methods: ['POST'])]
+    public function deleteBoard(Board $board, Request $request): Response
+    {
+        $token = (string)$request->request->get('_token');
+        if (!$this->isCsrfTokenValid('board_delete'.$board->getId(), $token)) {
+            $this->addFlash('error', 'Invalid CSRF token.');
+            return $this->redirectToRoute('kanban_board', ['id' => $board->getId()]);
+        }
+
+        $this->em->wrapInTransaction(function () use ($board) {
+            $this->em->remove($board);
+            $this->em->flush();
+        });
+
+        $this->addFlash('success', 'Board deleted.');
+
+        return $this->redirectToRoute('base_index');
+    }
+
     // move card to another column or change its position within the same column
     #[Route('/move-card', name: 'kanban_move_card', methods: ['POST'])]
     public function moveCard(Request $req): JsonResponse
@@ -133,16 +182,25 @@ class KanbanController extends AbstractController
         $token = (string)$request->request->get('_token');
         if (!$this->isCsrfTokenValid('column_rename'.$column->getId(), $token)) {
             $this->addFlash('error', 'Invalid CSRF token.');
-            return $this->redirectToRoute('kanban_board', ['id' => $board->getId()]);
+            return $request->isXmlHttpRequest()
+                ? new JsonResponse(['error' => 'Invalid CSRF token.'], 403)
+                : $this->redirectToRoute('kanban_board', ['id' => $board->getId()]);
         }
 
         $title = trim((string)$request->request->get('title'));
         if ($title === '') {
             $this->addFlash('error', 'Provide a column name.');
-        } else {
-            $column->setTitle($title);
-            $this->em->flush();
-            $this->addFlash('success', 'Column updated.');
+            return $request->isXmlHttpRequest()
+                ? new JsonResponse(['error' => 'Provide a column name.'], 422)
+                : $this->redirectToRoute('kanban_board', ['id' => $board->getId()]);
+        }
+
+        $column->setTitle($title);
+        $this->em->flush();
+        $this->addFlash('success', 'Column updated.');
+
+        if ($request->isXmlHttpRequest()) {
+            return new JsonResponse(['ok' => true, 'title' => $column->getTitle()]);
         }
 
         return $this->redirectToRoute('kanban_board', ['id' => $board->getId()]);
@@ -229,7 +287,9 @@ class KanbanController extends AbstractController
         $token = (string)$request->request->get('_token');
         if (!$this->isCsrfTokenValid('card_rename'.$card->getId(), $token)) {
             $this->addFlash('error', 'Invalid CSRF token.');
-            return $this->redirectToRoute('kanban_board', ['id' => $board->getId()]);
+            return $request->isXmlHttpRequest()
+                ? new JsonResponse(['error' => 'Invalid CSRF token.'], 403)
+                : $this->redirectToRoute('kanban_board', ['id' => $board->getId()]);
         }
 
         $title = trim((string)$request->request->get('title'));
@@ -237,11 +297,22 @@ class KanbanController extends AbstractController
 
         if ($title === '') {
             $this->addFlash('error', 'Provide a card title.');
-        } else {
-            $card->setTitle($title);
-            $card->setDescription($description !== '' ? $description : null);
-            $this->em->flush();
-            $this->addFlash('success', 'Card updated.');
+            return $request->isXmlHttpRequest()
+                ? new JsonResponse(['error' => 'Provide a card title.'], 422)
+                : $this->redirectToRoute('kanban_board', ['id' => $board->getId()]);
+        }
+
+        $card->setTitle($title);
+        $card->setDescription($description !== '' ? $description : null);
+        $this->em->flush();
+        $this->addFlash('success', 'Card updated.');
+
+        if ($request->isXmlHttpRequest()) {
+            return new JsonResponse([
+                'ok' => true,
+                'title' => $card->getTitle(),
+                'description' => $card->getDescription() ?? ''
+            ]);
         }
 
         return $this->redirectToRoute('kanban_board', ['id' => $board->getId(), '_fragment' => 'card-'.$card->getId()]);

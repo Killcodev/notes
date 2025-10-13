@@ -31,8 +31,8 @@
 .cards { display:flex; flex-direction:column; gap:12px }
 .card { background:#fff; border-radius:12px; padding:14px; box-shadow:0 12px 28px rgba(15,23,42,.08); border:1px solid #e2e8f0 }
 .card-header { display:flex; justify-content:space-between; gap:12px; align-items:flex-start }
-.card-header strong { font-size:0.97rem; color:#0f172a }
-.card-body p { margin:6px 0 0 0; color:#475569; font-size:0.9rem }
+.card-header .editable-trigger { font-size:0.97rem; font-weight:600; color:#0f172a }
+.card-body .editable-trigger { margin:6px 0 0 0; color:#475569; font-size:0.9rem }
 .card-adder { margin-top:14px }
 .is-hidden { display:none !important }
 .new-column { margin:24px 0 32px 0; display:flex; align-items:center; gap:16px }
@@ -40,10 +40,41 @@
 .sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0 }
 .drag-ghost { opacity:.6 }
 .drag-chosen { box-shadow:0 0 0 2px #7262ffff inset }
+.board-header { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin-bottom:24px }
+.board-name { margin:0; cursor:pointer }
+.editable-trigger { cursor:pointer; display:block; border-radius:8px; transition:text-decoration .2s ease }
+.editable-trigger:hover { text-decoration:underline }
+.editable-trigger.is-editing { cursor:text; text-decoration:none }
+.editable-trigger:focus-visible { outline:3px solid rgba(37,99,235,.4); outline-offset:2px }
+.editable-trigger[data-multiline="1"] { white-space:pre-wrap }
+.editable-trigger.is-placeholder { color:#94a3b8; font-style:italic }
+.delete-form { margin:0 }
+.delete-button { width:28px; height:28px; font-size:0.9rem; color:#94a3b8; background:transparent }
+.delete-button:hover, .delete-button:focus-visible { color:#475569; background:rgba(148,163,184,.18); outline:none }
 </style>
 
 <main class="container">
-  <h1>{{ board.name }}</h1>
+  <header class="board-header">
+    <h1
+      class="board-name editable-trigger"
+      tabindex="0"
+      data-editable="board"
+      data-single-line="1"
+      data-url="{{ path('kanban_board_rename', { id: board.id }) }}"
+      data-token="{{ csrf_token('board_rename' ~ board.id) }}"
+      data-current-value="{{ board.name|e('html_attr') }}"
+      aria-label="Edit board name"
+    >{{ board.name }}</h1>
+    <form
+      action="{{ path('kanban_board_delete', { id: board.id }) }}"
+      method="post"
+      class="delete-form"
+      onsubmit="return confirm('Delete board with all columns and cards?');"
+    >
+      <input type="hidden" name="_token" value="{{ csrf_token('board_delete' ~ board.id) }}">
+      <button type="submit" class="icon-button delete-button" aria-label="Delete board">&times;</button>
+    </form>
+  </header>
 
   <section class="new-column">
     <button
@@ -74,32 +105,25 @@
       <section class="column" data-column-id="{{ col.id }}" id="column-{{ col.id }}">
         <div class="column-header">
           <div class="column-title">
-            <h3>{{ col.title }}</h3>
-            <small>Order {{ col.position + 1 }}</small>
+            <span
+              class="editable-trigger"
+              tabindex="0"
+              data-editable="column"
+              data-single-line="1"
+              data-url="{{ path('kanban_column_rename', { id: col.id }) }}"
+              data-token="{{ csrf_token('column_rename' ~ col.id) }}"
+              data-current-value="{{ col.title|e('html_attr') }}"
+              aria-label="Edit column title"
+            >{{ col.title }}</span>
           </div>
-          <button
-            type="button"
-            class="icon-button"
-            aria-label="Edit column"
-            data-toggle-target="column-editor-{{ col.id }}"
-            aria-expanded="false"
-            aria-controls="column-editor-{{ col.id }}"
-          >✏️</button>
-        </div>
-
-        <div id="column-editor-{{ col.id }}" class="panel is-hidden">
-          <form action="{{ path('kanban_column_rename', { id: col.id }) }}" method="post" class="stacked-form">
-            <input type="hidden" name="_token" value="{{ csrf_token('column_rename' ~ col.id) }}">
-            <label class="sr-only" for="column-title-{{ col.id }}">Column title</label>
-            <input id="column-title-{{ col.id }}" type="text" name="title" value="{{ col.title }}" required>
-            <div class="inline-actions">
-              <button type="submit" class="primary-button">Save</button>
-              <button type="button" class="ghost-button" data-toggle-target="column-editor-{{ col.id }}">Cancel</button>
-            </div>
-          </form>
-          <form action="{{ path('kanban_column_delete', { id: col.id }) }}" method="post" class="stacked-form" onsubmit="return confirm('Delete column and its cards?');">
+          <form
+            action="{{ path('kanban_column_delete', { id: col.id }) }}"
+            method="post"
+            class="delete-form"
+            onsubmit="return confirm('Delete column and its cards?');"
+          >
             <input type="hidden" name="_token" value="{{ csrf_token('column_delete' ~ col.id) }}">
-            <button type="submit" class="danger-button">Delete column</button>
+            <button type="submit" class="icon-button delete-button" aria-label="Delete column">&times;</button>
           </form>
         </div>
 
@@ -108,39 +132,46 @@
           {% for card in columnCards %}
             <article class="card" data-card-id="{{ card.id }}" id="card-{{ card.id }}">
               <div class="card-header">
-                <strong>{{ card.title }}</strong>
-                <button
-                  type="button"
-                  class="icon-button"
-                  aria-label="Edit card"
-                  data-toggle-target="card-editor-{{ card.id }}"
-                  aria-expanded="false"
-                  aria-controls="card-editor-{{ card.id }}"
-                >✏️</button>
-              </div>
-              {% if card.description %}
-                <div class="card-body">
-                  <p>{{ card.description }}</p>
-                </div>
-              {% endif %}
-
-              <div id="card-editor-{{ card.id }}" class="panel is-hidden">
-                <form action="{{ path('kanban_card_rename', { id: card.id }) }}" method="post" class="stacked-form">
-                  <input type="hidden" name="_token" value="{{ csrf_token('card_rename' ~ card.id) }}">
-                  <label class="sr-only" for="card-title-{{ card.id }}">Card title</label>
-                  <input id="card-title-{{ card.id }}" type="text" name="title" value="{{ card.title }}" required>
-                  <label class="sr-only" for="card-description-{{ card.id }}">Card description</label>
-                  <textarea id="card-description-{{ card.id }}" name="description" placeholder="Optional description">{{ card.description }}</textarea>
-                  <div class="inline-actions">
-                    <button type="submit" class="primary-button">Save</button>
-                    <button type="button" class="ghost-button" data-toggle-target="card-editor-{{ card.id }}">Cancel</button>
-                  </div>
-                </form>
-                <form action="{{ path('kanban_card_delete', { id: card.id }) }}" method="post" class="stacked-form" onsubmit="return confirm('Delete card?');">
+                <span
+                  class="editable-trigger"
+                  tabindex="0"
+                  id="card-title-{{ card.id }}-display"
+                  data-editable="card-title"
+                  data-single-line="1"
+                  data-url="{{ path('kanban_card_rename', { id: card.id }) }}"
+                  data-token="{{ csrf_token('card_rename' ~ card.id) }}"
+                  data-card-id="{{ card.id }}"
+                  data-companion="#card-description-{{ card.id }}-display"
+                  data-current-value="{{ card.title|e('html_attr') }}"
+                  aria-label="Edit card title"
+                >{{ card.title }}</span>
+                <form
+                  action="{{ path('kanban_card_delete', { id: card.id }) }}"
+                  method="post"
+                  class="delete-form"
+                  onsubmit="return confirm('Delete card?');"
+                >
                   <input type="hidden" name="_token" value="{{ csrf_token('card_delete' ~ card.id) }}">
-                  <button type="submit" class="danger-button">Delete card</button>
+                  <button type="submit" class="icon-button delete-button" aria-label="Delete card">&times;</button>
                 </form>
               </div>
+              <div class="card-body">
+                <p
+                  id="card-description-{{ card.id }}-display"
+                  class="editable-trigger card-description{% if card.description is empty %} is-placeholder{% endif %}"
+                  tabindex="0"
+                  data-editable="card-description"
+                  data-multiline="1"
+                  data-url="{{ path('kanban_card_rename', { id: card.id }) }}"
+                  data-token="{{ csrf_token('card_rename' ~ card.id) }}"
+                  data-card-id="{{ card.id }}"
+                  data-companion="#card-title-{{ card.id }}-display"
+                  data-placeholder="Click to add details"
+                  data-current-value="{{ card.description|default('')|e('html_attr') }}"
+                  aria-label="Edit card description"
+                >{{ card.description ?: 'Click to add details' }}</p>
+              </div>
+
             </article>
           {% endfor %}
         </div>
@@ -240,5 +271,225 @@ toggleButtons.forEach(btn => {
     }
   });
 });
+
+const inlineEditableElements = document.querySelectorAll('[data-editable]');
+inlineEditableElements.forEach(setupInlineEditable);
+
+function setupInlineEditable(el) {
+  el.dataset.saving = '0';
+  el.dataset.editing = el.dataset.editing ?? '0';
+  const isMultiline = el.dataset.multiline === '1';
+  const declaredValue = el.dataset.currentValue ?? '';
+  const placeholder = el.dataset.placeholder || '';
+  if (declaredValue !== '') {
+    el.dataset.currentValue = declaredValue;
+    setDisplayValue(el, declaredValue);
+  } else if (placeholder) {
+    el.dataset.currentValue = '';
+    setDisplayValue(el, '');
+  } else {
+    const normalized = extractNormalizedValue(el, isMultiline);
+    el.dataset.currentValue = normalized;
+    setDisplayValue(el, normalized);
+  }
+  el.addEventListener('click', () => activateInlineEdit(el));
+  el.addEventListener('keydown', evt => handleInlineKeydown(evt, el));
+  el.addEventListener('blur', () => handleInlineBlur(el));
+}
+
+function activateInlineEdit(el) {
+  if (el.dataset.editing === '1' || el.dataset.saving === '1') return;
+  el.dataset.editing = '1';
+  el.dataset.originalValue = el.dataset.currentValue ?? '';
+  el.classList.add('is-editing');
+  el.contentEditable = 'true';
+  if (el.classList.contains('is-placeholder')) {
+    el.textContent = '';
+    el.classList.remove('is-placeholder');
+  }
+  requestAnimationFrame(() => {
+    el.focus({ preventScroll: true });
+    const selection = window.getSelection();
+    if (!selection) return;
+    const range = document.createRange();
+    range.selectNodeContents(el);
+    selection.removeAllRanges();
+    selection.addRange(range);
+  });
+}
+
+function handleInlineKeydown(evt, el) {
+  if (el.dataset.editing !== '1') {
+    if (evt.key === 'Enter' || evt.key === ' ' || evt.key === 'F2') {
+      evt.preventDefault();
+      activateInlineEdit(el);
+    }
+    return;
+  }
+  const isMultiline = el.dataset.multiline === '1';
+  if (evt.key === 'Escape') {
+    evt.preventDefault();
+    cancelInlineEdit(el);
+    return;
+  }
+  if (!isMultiline && evt.key === 'Enter') {
+    evt.preventDefault();
+    saveInlineEdit(el);
+    el.blur();
+    return;
+  }
+  if (isMultiline && evt.key === 'Enter' && !evt.shiftKey) {
+    evt.preventDefault();
+    saveInlineEdit(el);
+    el.blur();
+  }
+}
+
+function handleInlineBlur(el) {
+  if (el.dataset.editing === '1') {
+    saveInlineEdit(el);
+  }
+}
+
+function cancelInlineEdit(el) {
+  el.contentEditable = 'false';
+  el.classList.remove('is-editing');
+  el.dataset.editing = '0';
+  el.dataset.saving = '0';
+  const original = el.dataset.currentValue ?? '';
+  setDisplayValue(el, original);
+}
+
+async function saveInlineEdit(el) {
+  if (el.dataset.saving === '1') return;
+  const type = el.dataset.editable;
+  const isMultiline = el.dataset.multiline === '1';
+  const newValue = extractNormalizedValue(el, isMultiline);
+  const previousValue = el.dataset.currentValue ?? '';
+
+  if (type === 'board' && newValue === '') {
+    alert('Board name cannot be empty.');
+    cancelInlineEdit(el);
+    return;
+  }
+  if (type === 'column' && newValue === '') {
+    alert('Column title cannot be empty.');
+    cancelInlineEdit(el);
+    return;
+  }
+  if (type === 'card-title' && newValue === '') {
+    alert('Card title cannot be empty.');
+    cancelInlineEdit(el);
+    return;
+  }
+
+  if (newValue === previousValue) {
+    finalizeInlineEdit(el, previousValue);
+    return;
+  }
+
+  const url = el.dataset.url;
+  const token = el.dataset.token;
+  if (!url || !token) {
+    finalizeInlineEdit(el, previousValue);
+    return;
+  }
+
+  const payload = new URLSearchParams();
+  payload.append('_token', token);
+
+  if (type === 'board') {
+    payload.append('name', newValue);
+  } else if (type === 'column') {
+    payload.append('title', newValue);
+  } else if (type === 'card-title' || type === 'card-description') {
+    const companion = getCompanionElement(el);
+    const companionValue = companion ? (companion.dataset.currentValue ?? '') : '';
+    let titleValue;
+    let descriptionValue;
+
+    if (type === 'card-title') {
+      titleValue = newValue;
+      descriptionValue = companionValue;
+    } else {
+      titleValue = companionValue;
+      descriptionValue = newValue;
+    }
+
+    if (titleValue === '') {
+      alert('Card title cannot be empty.');
+      cancelInlineEdit(el);
+      return;
+    }
+
+    payload.append('title', titleValue);
+    payload.append('description', descriptionValue);
+  } else {
+    finalizeInlineEdit(el, previousValue);
+    return;
+  }
+
+  el.dataset.saving = '1';
+
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'X-Requested-With': 'XMLHttpRequest' },
+      body: payload
+    });
+
+    let result = null;
+    const contentType = response.headers.get('Content-Type') || '';
+    if (contentType.includes('application/json')) {
+      result = await response.json();
+    }
+
+    if (!response.ok || (result && result.error)) {
+      throw new Error(result?.error || 'Save failed.');
+    }
+
+    el.dataset.currentValue = newValue;
+    finalizeInlineEdit(el, newValue);
+  } catch (error) {
+    alert(error.message);
+    finalizeInlineEdit(el, previousValue);
+  } finally {
+    el.dataset.saving = '0';
+  }
+}
+
+function finalizeInlineEdit(el, value) {
+  setDisplayValue(el, value);
+  el.contentEditable = 'false';
+  el.classList.remove('is-editing');
+  el.dataset.editing = '0';
+}
+
+function extractNormalizedValue(el, isMultiline) {
+  let value = el.textContent.replace(/\u00a0/g, ' ');
+  if (isMultiline) {
+    value = value.replace(/\r/g, '');
+    value = value.split('\n').map(line => line.replace(/\s+$/g, '')).join('\n');
+    return value.trim();
+  }
+  return value.replace(/\s+/g, ' ').trim();
+}
+
+function setDisplayValue(el, value) {
+  const placeholder = el.dataset.placeholder || '';
+  if (value === '' && placeholder) {
+    el.textContent = placeholder;
+    el.classList.add('is-placeholder');
+  } else {
+    el.textContent = value;
+    el.classList.remove('is-placeholder');
+  }
+}
+
+function getCompanionElement(el) {
+  const selector = el.dataset.companion;
+  if (!selector) return null;
+  return document.querySelector(selector);
+}
 </script>
 {% endblock %}
