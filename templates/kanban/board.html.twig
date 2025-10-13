@@ -6,8 +6,14 @@
 <script src="https://unpkg.com/sortablejs@1.15.2/modular/sortable.complete.esm.js" type="module"></script>
 
 <style>
-.board { display:grid; grid-template-columns:repeat(auto-fill,minmax(320px,1fr)); gap:16px }
-.column { background:#f7f7f8; border-radius:14px; padding:16px; display:flex; flex-direction:column; max-height:80vh; overflow:auto; box-shadow:0 10px 30px rgba(15,23,42,.08) }
+.content { display:flex; flex-direction:column; }
+.kanban-container { display:flex; flex-direction:column; gap:24px; flex:1; min-height:0; }
+.board-frame { flex:1; min-height:0; display:flex; }
+.board { --column-width:320px; display:flex; flex:1; flex-wrap:nowrap; align-items:stretch; gap:16px; height:100%; overflow-x:auto; overflow-y:hidden; padding:4px 8px 16px 4px; }
+.board::-webkit-scrollbar { height:8px; }
+.board::-webkit-scrollbar-thumb { background:rgba(148,163,184,.35); border-radius:999px; }
+.board::-webkit-scrollbar-track { background:transparent; }
+.column { flex:0 0 var(--column-width); background:#f7f7f8; border-radius:14px; padding:16px; display:flex; flex-direction:column; height:100%; min-height:0; overflow:hidden; box-shadow:0 10px 30px rgba(15,23,42,.08) }
 .column-header { display:flex; justify-content:space-between; align-items:flex-start; gap:12px }
 .column-title h3 { margin:0; font-size:1.05rem; color:#0f172a }
 .column-title small { display:block; margin-top:4px; color:#64748b; font-size:0.75rem; letter-spacing:0.02em }
@@ -16,11 +22,6 @@
 .icon-button:active { transform:scale(0.95) }
 .plus-button { width:42px; height:42px; display:flex; align-items:center; justify-content:center; font-size:1.2rem; background:#1d4ed8; color:#fff; box-shadow:0 10px 25px rgba(29,78,216,.3) }
 .plus-button:hover, .plus-button:focus-visible { background:#1e40af; color:#fff }
-.panel { margin-top:14px; padding:16px; border-radius:12px; background:#fff; border:1px solid #e2e8f0; box-shadow:0 16px 30px rgba(15,23,42,.08) }
-.stacked-form { display:flex; flex-direction:column; gap:12px }
-.stacked-form input[type="text"], .stacked-form textarea { padding:10px 12px; border-radius:10px; border:1px solid #cbd5f5; background:#fff; font-size:0.95rem; color:#0f172a; transition:border-color .2s ease, box-shadow .2s ease }
-.stacked-form input[type="text"]:focus, .stacked-form textarea:focus { outline:none; border-color:#2563eb; box-shadow:0 0 0 3px rgba(37,99,235,.2) }
-.stacked-form textarea { resize:vertical; min-height:80px }
 .inline-actions { display:flex; gap:8px; flex-wrap:wrap }
 .primary-button { background:#2563eb; color:#fff; border:0; border-radius:10px; padding:8px 16px; font-weight:600; cursor:pointer; transition:background .2s ease }
 .primary-button:hover, .primary-button:focus-visible { background:#1d4ed8; outline:none }
@@ -28,19 +29,30 @@
 .ghost-button:hover, .ghost-button:focus-visible { background:rgba(148,163,184,.2); outline:none }
 .danger-button { background:#ef4444; color:#fff; border:0; border-radius:10px; padding:8px 16px; font-weight:600; cursor:pointer; transition:background .2s ease }
 .danger-button:hover, .danger-button:focus-visible { background:#dc2626; outline:none }
-.cards { display:flex; flex-direction:column; gap:12px }
+.cards { display:flex; flex-direction:column; gap:12px; flex:1; overflow-y:auto; min-height:0; padding-right:4px; padding-bottom:8px }
 .card { background:#fff; border-radius:12px; padding:14px; box-shadow:0 12px 28px rgba(15,23,42,.08); border:1px solid #e2e8f0 }
 .card-header { display:flex; justify-content:space-between; gap:12px; align-items:flex-start }
 .card-header .editable-trigger { font-size:0.97rem; font-weight:600; color:#0f172a }
 .card-body .editable-trigger { margin:6px 0 0 0; color:#475569; font-size:0.9rem }
-.card-adder { margin-top:14px }
+.card-adder { margin-top:14px; flex:0 0 auto }
+.column-composer { background:#f8fbff; border:1px dashed #93c5fd; box-shadow:none }
+.column-composer .column-header { flex-direction:column; gap:12px }
+.column-composer .composer-actions { align-self:flex-start }
+.card-composer { border:1px dashed #cbd5f5; background:#f1f5f9; box-shadow:none }
+.composer-input { min-height:44px; border-radius:10px; border:1px solid #cbd5f5; background:#fff; padding:10px 12px; font-size:0.95rem; color:#0f172a; transition:border-color .2s ease, box-shadow .2s ease; outline:none; }
+.composer-input:focus { border-color:#2563eb; box-shadow:0 0 0 3px rgba(37,99,235,.18); }
+.composer-input:empty::before { content:attr(data-placeholder); color:#94a3b8; font-style:italic; pointer-events:none; }
+.composer-actions { display:flex; gap:8px; flex-wrap:wrap }
+.composer-hint { margin:8px 0 0; color:#94a3b8; font-size:0.75rem }
 .is-hidden { display:none !important }
-.new-column { margin:24px 0 32px 0; display:flex; align-items:center; gap:16px }
-.new-column-description { font-size:0.9rem; color:#475569 }
+.column-add-tile { flex:0 0 var(--column-width); height:100%; display:flex; align-items:stretch; justify-content:center }
+.column-add-button { width:100%; height:100%; border:2px dashed #93c5fd; border-radius:14px; background:#eef2ff; color:#1d4ed8; font-weight:600; font-size:0.95rem; padding:24px 16px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; cursor:pointer; transition:background .2s ease, border-color .2s ease, transform .2s ease }
+.column-add-button:hover, .column-add-button:focus-visible { background:#e0e7ff; border-color:#6366f1; outline:none; transform:translateY(-2px) }
+.inline-add-symbol { font-size:2rem; line-height:1 }
 .sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0 }
 .drag-ghost { opacity:.6 }
 .drag-chosen { box-shadow:0 0 0 2px #7262ffff inset }
-.board-header { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin-bottom:24px }
+.board-header { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin-bottom:24px; flex-shrink:0 }
 .board-name { margin:0; cursor:pointer }
 .editable-trigger { cursor:pointer; display:block; border-radius:8px; transition:text-decoration .2s ease }
 .editable-trigger:hover { text-decoration:underline }
@@ -53,7 +65,7 @@
 .delete-button:hover, .delete-button:focus-visible { color:#475569; background:rgba(148,163,184,.18); outline:none }
 </style>
 
-<main class="container">
+<main class="kanban-container">
   <header class="board-header">
     <h1
       class="board-name editable-trigger"
@@ -75,34 +87,10 @@
       <button type="submit" class="icon-button delete-button" aria-label="Delete board">&times;</button>
     </form>
   </header>
-
-  <section class="new-column">
-    <button
-      type="button"
-      class="icon-button plus-button"
-      aria-label="Add column"
-      data-toggle-target="column-add-panel"
-      aria-expanded="false"
-      aria-controls="column-add-panel"
-    >+</button>
-    <p class="new-column-description">Add a fresh column whenever you need a new workflow lane.</p>
-  </section>
-
-  <div id="column-add-panel" class="panel is-hidden">
-    <form action="{{ path('kanban_add_column', { id: board.id }) }}" method="post" class="stacked-form">
-      <input type="hidden" name="_token" value="{{ csrf_token('column_add' ~ board.id) }}">
-      <label class="sr-only" for="column-title-new">Column title</label>
-      <input id="column-title-new" type="text" name="title" placeholder="Column title" required>
-      <div class="inline-actions">
-        <button type="submit" class="primary-button">Create column</button>
-        <button type="button" class="ghost-button" data-toggle-target="column-add-panel">Cancel</button>
-      </div>
-    </form>
-  </div>
-
-  <div id="columns" class="board">
-    {% for col in columns %}
-      <section class="column" data-column-id="{{ col.id }}" id="column-{{ col.id }}">
+  <div class="board-frame">
+    <div id="columns" class="board">
+      {% for col in columns %}
+        <section class="column" data-column-id="{{ col.id }}" id="column-{{ col.id }}">
         <div class="column-header">
           <div class="column-title">
             <span
@@ -181,26 +169,29 @@
             type="button"
             class="icon-button plus-button"
             aria-label="Add card"
-            data-toggle-target="add-card-{{ col.id }}"
-            aria-expanded="false"
-            aria-controls="add-card-{{ col.id }}"
+            data-inline-add="card"
+            data-column-id="{{ col.id }}"
+            data-submit-url="{{ path('kanban_card_add', { id: col.id }) }}"
+            data-submit-token="{{ csrf_token('card_add' ~ col.id) }}"
           >+</button>
-          <div id="add-card-{{ col.id }}" class="panel is-hidden">
-            <form class="stacked-form" action="{{ path('kanban_card_add', { id: col.id }) }}" method="post">
-              <input type="hidden" name="_token" value="{{ csrf_token('card_add' ~ col.id) }}">
-              <label class="sr-only" for="card-add-title-{{ col.id }}">Card title</label>
-              <input id="card-add-title-{{ col.id }}" type="text" name="title" placeholder="Card title" required>
-              <label class="sr-only" for="card-add-description-{{ col.id }}">Card description</label>
-              <textarea id="card-add-description-{{ col.id }}" name="description" placeholder="Optional description"></textarea>
-              <div class="inline-actions">
-                <button type="submit" class="primary-button">Create card</button>
-                <button type="button" class="ghost-button" data-toggle-target="add-card-{{ col.id }}">Cancel</button>
-              </div>
-            </form>
-          </div>
         </div>
       </section>
-    {% endfor %}
+      {% endfor %}
+
+      <div class="column-add-tile" data-column-add-tile>
+        <button
+          type="button"
+          class="column-add-button"
+          aria-label="Add column"
+          data-inline-add="column"
+          data-submit-url="{{ path('kanban_add_column', { id: board.id }) }}"
+          data-submit-token="{{ csrf_token('column_add' ~ board.id) }}"
+        >
+          <span class="inline-add-symbol">+</span>
+          <span>Add column</span>
+        </button>
+      </div>
+    </div>
   </div>
 </main>
 
@@ -210,30 +201,40 @@ import Sortable from 'https://unpkg.com/sortablejs@1.15.2/modular/sortable.core.
 const csrf = '{{ csrf_token("kanban") }}';
 
 // sorting/moving columns
-new Sortable(document.getElementById('columns'), {
-  animation: 150,
-  ghostClass: 'drag-ghost',
-  chosenClass: 'drag-chosen',
-  handle: '.column-header',
-  onEnd: async () => {
-    const ids = [...document.querySelectorAll('#columns .column')].map(c => parseInt(c.dataset.columnId));
-    await fetch('{{ path("kanban_reorder_columns") }}', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ orderedColumnIds: ids, _token: csrf })
-    });
-  }
-});
+const columnsContainer = document.getElementById('columns');
+if (columnsContainer) {
+  new Sortable(columnsContainer, {
+    animation: 150,
+    ghostClass: 'drag-ghost',
+    chosenClass: 'drag-chosen',
+    handle: '.column-header',
+    onEnd: async () => {
+      const ids = [...document.querySelectorAll('#columns .column[data-column-id]')]
+        .map(c => parseInt(c.dataset.columnId, 10))
+        .filter(Number.isFinite);
+      await fetch('{{ path("kanban_reorder_columns") }}', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ orderedColumnIds: ids, _token: csrf })
+      });
+    }
+  });
+}
 
 // sorting/moving cards
-document.querySelectorAll('[data-column-cards]').forEach(el => {
-  new Sortable(el, {
+document.querySelectorAll('[data-column-cards]').forEach(setupCardSortable);
+
+function setupCardSortable(container) {
+  if (!container || container.dataset.sortableInit === '1') return;
+  container.dataset.sortableInit = '1';
+  new Sortable(container, {
     group: 'cards',
     animation: 150,
     ghostClass: 'drag-ghost',
     chosenClass: 'drag-chosen',
-    onAdd: onChange, onUpdate: onChange
+    onAdd: onChange,
+    onUpdate: onChange
   });
-});
+}
 
 async function onChange(evt) {
   const cardEl = evt.item;
@@ -247,30 +248,551 @@ async function onChange(evt) {
   });
 }
 
-const toggleButtons = document.querySelectorAll('[data-toggle-target]');
-toggleButtons.forEach(btn => {
-  ['mousedown','touchstart'].forEach(evtName => btn.addEventListener(evtName, evt => evt.stopPropagation()));
-  btn.addEventListener('click', () => {
-    const targetId = btn.dataset.toggleTarget;
-    if (!targetId) return;
-    const panel = document.getElementById(targetId);
-    if (!panel) return;
+const columnAddButton = document.querySelector('[data-inline-add="column"]');
+if (columnAddButton) {
+  registerColumnAddButton(columnAddButton);
+}
 
-    const shouldShow = panel.classList.contains('is-hidden');
-    panel.classList.toggle('is-hidden', !shouldShow);
+document.querySelectorAll('[data-inline-add="card"]').forEach(registerCardAddButton);
 
-    document.querySelectorAll(`[data-toggle-target="${targetId}"]`).forEach(trigger => {
-      trigger.setAttribute('aria-expanded', shouldShow ? 'true' : 'false');
-    });
+function registerColumnAddButton(btn) {
+  if (!btn || btn.dataset.handlerAttached === '1') return;
+  btn.dataset.handlerAttached = '1';
+  btn.addEventListener('click', evt => {
+    evt.preventDefault();
+    startColumnComposer(btn);
+  });
+}
 
-    if (shouldShow) {
-      const firstField = panel.querySelector('input, textarea');
-      if (firstField) {
-        firstField.focus();
-      }
+function registerCardAddButton(btn) {
+  if (!btn || btn.dataset.handlerAttached === '1') return;
+  btn.dataset.handlerAttached = '1';
+  btn.addEventListener('click', evt => {
+    evt.preventDefault();
+    startCardComposer(btn);
+  });
+}
+
+let activeColumnComposer = null;
+const activeCardComposers = new Map();
+
+function startColumnComposer(button) {
+  if (activeColumnComposer) {
+    focusComposerInput(activeColumnComposer.input);
+    return;
+  }
+  const submitUrl = button.dataset.submitUrl;
+  const token = button.dataset.submitToken;
+  if (!submitUrl || !token) return;
+
+  const boardEl = document.getElementById('columns');
+  if (!boardEl) return;
+  const tile = button.closest('[data-column-add-tile]');
+
+  const composer = document.createElement('section');
+  composer.className = 'column column-composer';
+  composer.dataset.columnComposer = '1';
+
+  const header = document.createElement('div');
+  header.className = 'column-header';
+  composer.appendChild(header);
+
+  const titleWrapper = document.createElement('div');
+  titleWrapper.className = 'column-title';
+  header.appendChild(titleWrapper);
+
+  const input = document.createElement('div');
+  input.className = 'composer-input';
+  input.dataset.placeholder = 'Column title';
+  input.dataset.composerInput = '1';
+  input.contentEditable = 'true';
+  input.setAttribute('role', 'textbox');
+  input.setAttribute('aria-label', 'New column title');
+  titleWrapper.appendChild(input);
+
+  const actions = document.createElement('div');
+  actions.className = 'inline-actions composer-actions';
+  header.appendChild(actions);
+
+  const commitBtn = document.createElement('button');
+  commitBtn.type = 'button';
+  commitBtn.className = 'primary-button';
+  commitBtn.dataset.composerCommit = '1';
+  commitBtn.textContent = 'Create column';
+  actions.appendChild(commitBtn);
+
+  const cancelBtn = document.createElement('button');
+  cancelBtn.type = 'button';
+  cancelBtn.className = 'ghost-button';
+  cancelBtn.dataset.composerCancel = '1';
+  cancelBtn.textContent = 'Cancel';
+  actions.appendChild(cancelBtn);
+
+  const hint = document.createElement('p');
+  hint.className = 'composer-hint';
+  hint.textContent = 'Press Enter to create. Esc to cancel.';
+  composer.appendChild(hint);
+
+  const insertionTarget = tile && tile.parentElement === boardEl ? tile : null;
+  if (tile) {
+    tile.classList.add('is-hidden');
+  }
+  if (insertionTarget) {
+    boardEl.insertBefore(composer, insertionTarget);
+  } else {
+    boardEl.appendChild(composer);
+  }
+  composer.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'end' });
+
+  const state = {
+    type: 'column',
+    button,
+    composer,
+    input,
+    commitBtn,
+    cancelBtn,
+    submitUrl,
+    token,
+    board: boardEl,
+    tile,
+    submitting: false,
+    cancelled: false
+  };
+  activeColumnComposer = state;
+
+  const submit = () => submitColumnComposer(state);
+  const cancel = () => cancelColumnComposer(state);
+
+  commitBtn.addEventListener('click', submit);
+  cancelBtn.addEventListener('click', cancel);
+  input.addEventListener('input', () => updateComposerControls(state));
+  input.addEventListener('keydown', evt => {
+    if (evt.key === 'Enter') {
+      evt.preventDefault();
+      submit();
+    } else if (evt.key === 'Escape') {
+      evt.preventDefault();
+      cancel();
     }
   });
-});
+  input.addEventListener('blur', () => {
+    if (state.submitting || state.cancelled) return;
+    submit();
+  });
+
+  updateComposerControls(state);
+  focusComposerInput(input);
+}
+
+function cancelColumnComposer(state) {
+  if (activeColumnComposer !== state) return;
+  state.cancelled = true;
+  const { composer, tile, board } = state;
+  composer.remove();
+  if (tile) {
+    tile.classList.remove('is-hidden');
+    if (board && tile.parentElement === board) {
+      board.appendChild(tile);
+      board.scrollTo({ left: board.scrollWidth, behavior: 'smooth' });
+    }
+  }
+  state.button?.focus({ preventScroll: false });
+  activeColumnComposer = null;
+}
+
+async function submitColumnComposer(state) {
+  if (activeColumnComposer !== state || state.submitting) return;
+  const title = getComposerValue(state.input);
+  if (title === '') {
+    cancelColumnComposer(state);
+    return;
+  }
+
+  state.submitting = true;
+  updateComposerControls(state);
+
+  const payload = new URLSearchParams();
+  payload.append('_token', state.token);
+  payload.append('title', title);
+
+  try {
+    const response = await fetch(state.submitUrl, {
+      method: 'POST',
+      headers: { 'X-Requested-With': 'XMLHttpRequest' },
+      body: payload
+    });
+    const result = await readMaybeJson(response);
+    if (!response.ok || !result || result.error || !result.column) {
+      throw new Error(result?.error || 'Create column failed.');
+    }
+
+    const columnEl = createColumnElement(result.column);
+    state.cancelled = true;
+    state.composer.replaceWith(columnEl);
+    activeColumnComposer = null;
+
+    if (state.tile) {
+      state.tile.classList.remove('is-hidden');
+      if (state.board) {
+        state.board.appendChild(state.tile);
+        state.board.scrollTo({ left: state.board.scrollWidth, behavior: 'smooth' });
+      }
+    } else if (state.board) {
+      state.board.scrollTo({ left: state.board.scrollWidth, behavior: 'smooth' });
+    }
+
+    const cardsContainer = columnEl.querySelector('[data-column-cards]');
+    if (cardsContainer) setupCardSortable(cardsContainer);
+    const cardButton = columnEl.querySelector('[data-inline-add="card"]');
+    if (cardButton) registerCardAddButton(cardButton);
+
+    columnEl.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+  } catch (error) {
+    alert(error.message);
+    focusComposerInput(state.input);
+  } finally {
+    if (activeColumnComposer === state) {
+      state.submitting = false;
+      updateComposerControls(state);
+    }
+  }
+}
+
+function startCardComposer(button) {
+  const columnEl = button.closest('.column');
+  if (!columnEl) return;
+
+  const columnId = parseInt(button.dataset.columnId || '', 10);
+  if (!columnId) return;
+
+  const current = activeCardComposers.get(columnId);
+  if (current) {
+    focusComposerInput(current.input);
+    return;
+  }
+
+  const submitUrl = button.dataset.submitUrl;
+  const token = button.dataset.submitToken;
+  if (!submitUrl || !token) return;
+
+  const cardsContainer = columnEl.querySelector('[data-column-cards]');
+  if (!cardsContainer) return;
+
+  const composer = document.createElement('article');
+  composer.className = 'card card-composer';
+  composer.dataset.cardComposer = '1';
+
+  const input = document.createElement('div');
+  input.className = 'composer-input';
+  input.dataset.placeholder = 'Card title';
+  input.dataset.composerInput = '1';
+  input.contentEditable = 'true';
+  input.setAttribute('role', 'textbox');
+  input.setAttribute('aria-label', 'New card title');
+  composer.appendChild(input);
+
+  const actions = document.createElement('div');
+  actions.className = 'inline-actions composer-actions';
+  composer.appendChild(actions);
+
+  const commitBtn = document.createElement('button');
+  commitBtn.type = 'button';
+  commitBtn.className = 'primary-button';
+  commitBtn.dataset.composerCommit = '1';
+  commitBtn.textContent = 'Add card';
+  actions.appendChild(commitBtn);
+
+  const cancelBtn = document.createElement('button');
+  cancelBtn.type = 'button';
+  cancelBtn.className = 'ghost-button';
+  cancelBtn.dataset.composerCancel = '1';
+  cancelBtn.textContent = 'Cancel';
+  actions.appendChild(cancelBtn);
+
+  const hint = document.createElement('p');
+  hint.className = 'composer-hint';
+  hint.textContent = 'Press Enter to create. Esc to cancel.';
+  composer.appendChild(hint);
+
+  cardsContainer.appendChild(composer);
+
+  const state = {
+    type: 'card',
+    columnId,
+    button,
+    composer,
+    input,
+    commitBtn,
+    cancelBtn,
+    submitUrl,
+    token,
+    cardsContainer,
+    submitting: false,
+    cancelled: false
+  };
+  activeCardComposers.set(columnId, state);
+
+  const submit = () => submitCardComposer(state);
+  const cancel = () => cancelCardComposer(state);
+
+  commitBtn.addEventListener('click', submit);
+  cancelBtn.addEventListener('click', cancel);
+  input.addEventListener('input', () => updateComposerControls(state));
+  input.addEventListener('keydown', evt => {
+    if (evt.key === 'Enter') {
+      evt.preventDefault();
+      submit();
+    } else if (evt.key === 'Escape') {
+      evt.preventDefault();
+      cancel();
+    }
+  });
+  input.addEventListener('blur', () => {
+    if (state.submitting || state.cancelled) return;
+    submit();
+  });
+
+  updateComposerControls(state);
+  focusComposerInput(input);
+}
+
+function cancelCardComposer(state) {
+  const current = activeCardComposers.get(state.columnId);
+  if (current !== state) return;
+  state.cancelled = true;
+  state.composer.remove();
+  activeCardComposers.delete(state.columnId);
+}
+
+async function submitCardComposer(state) {
+  const current = activeCardComposers.get(state.columnId);
+  if (current !== state || state.submitting) return;
+
+  const title = getComposerValue(state.input);
+  if (title === '') {
+    cancelCardComposer(state);
+    return;
+  }
+
+  state.submitting = true;
+  updateComposerControls(state);
+
+  const payload = new URLSearchParams();
+  payload.append('_token', state.token);
+  payload.append('title', title);
+  payload.append('description', '');
+
+  try {
+    const response = await fetch(state.submitUrl, {
+      method: 'POST',
+      headers: { 'X-Requested-With': 'XMLHttpRequest' },
+      body: payload
+    });
+    const result = await readMaybeJson(response);
+    if (!response.ok || !result || result.error || !result.card) {
+      throw new Error(result?.error || 'Create card failed.');
+    }
+
+    const cardEl = createCardElement(result.card);
+    state.cancelled = true;
+    state.composer.replaceWith(cardEl);
+    activeCardComposers.delete(state.columnId);
+
+    cardEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  } catch (error) {
+    alert(error.message);
+    focusComposerInput(state.input);
+  } finally {
+    const stillActive = activeCardComposers.get(state.columnId) === state;
+    if (stillActive) {
+      state.submitting = false;
+      updateComposerControls(state);
+    }
+  }
+}
+
+function updateComposerControls(state) {
+  if (!state.commitBtn) return;
+  const hasValue = getComposerValue(state.input) !== '';
+  state.commitBtn.disabled = !hasValue || state.submitting;
+}
+
+function getComposerValue(el) {
+  return (el.textContent || '').replace(/\u00a0/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+function focusComposerInput(el) {
+  requestAnimationFrame(() => {
+    el.focus({ preventScroll: true });
+    const selection = window.getSelection();
+    if (!selection) return;
+    const range = document.createRange();
+    range.selectNodeContents(el);
+    selection.removeAllRanges();
+    selection.addRange(range);
+  });
+}
+
+function readMaybeJson(response) {
+  const contentType = response.headers.get('Content-Type') || '';
+  if (contentType.includes('application/json')) {
+    return response.json().catch(() => null);
+  }
+  return Promise.resolve(null);
+}
+
+function createColumnElement(data) {
+  const section = document.createElement('section');
+  section.className = 'column';
+  section.dataset.columnId = data.id;
+  section.id = `column-${data.id}`;
+
+  const header = document.createElement('div');
+  header.className = 'column-header';
+  section.appendChild(header);
+
+  const titleWrapper = document.createElement('div');
+  titleWrapper.className = 'column-title';
+  header.appendChild(titleWrapper);
+
+  const titleSpan = document.createElement('span');
+  titleSpan.className = 'editable-trigger';
+  titleSpan.tabIndex = 0;
+  titleSpan.dataset.editable = 'column';
+  titleSpan.dataset.singleLine = '1';
+  titleSpan.dataset.url = data.urls.rename;
+  titleSpan.dataset.token = data.tokens.rename;
+  titleSpan.dataset.currentValue = data.title;
+  titleSpan.setAttribute('aria-label', 'Edit column title');
+  titleSpan.textContent = data.title;
+  titleWrapper.appendChild(titleSpan);
+  setupInlineEditable(titleSpan);
+
+  const deleteForm = document.createElement('form');
+  deleteForm.action = data.urls.delete;
+  deleteForm.method = 'post';
+  deleteForm.className = 'delete-form';
+  header.appendChild(deleteForm);
+
+  const deleteToken = document.createElement('input');
+  deleteToken.type = 'hidden';
+  deleteToken.name = '_token';
+  deleteToken.value = data.tokens.delete;
+  deleteForm.appendChild(deleteToken);
+
+  const deleteButton = document.createElement('button');
+  deleteButton.type = 'submit';
+  deleteButton.className = 'icon-button delete-button';
+  deleteButton.setAttribute('aria-label', 'Delete column');
+  deleteButton.textContent = '\u00D7';
+  deleteForm.appendChild(deleteButton);
+
+  attachDeleteConfirm(deleteForm, 'Delete column and its cards?');
+
+  const cardsContainer = document.createElement('div');
+  cardsContainer.className = 'cards';
+  cardsContainer.dataset.columnCards = '';
+  section.appendChild(cardsContainer);
+
+  const adder = document.createElement('div');
+  adder.className = 'card-adder';
+  section.appendChild(adder);
+
+  const addButton = document.createElement('button');
+  addButton.type = 'button';
+  addButton.className = 'icon-button plus-button';
+  addButton.setAttribute('aria-label', 'Add card');
+  addButton.dataset.inlineAdd = 'card';
+  addButton.dataset.columnId = data.id;
+  addButton.dataset.submitUrl = data.urls.add_card;
+  addButton.dataset.submitToken = data.tokens.add_card;
+  addButton.textContent = '+';
+  adder.appendChild(addButton);
+
+  registerCardAddButton(addButton);
+
+  return section;
+}
+
+function createCardElement(data) {
+  const article = document.createElement('article');
+  article.className = 'card';
+  article.dataset.cardId = data.id;
+  article.id = `card-${data.id}`;
+
+  const header = document.createElement('div');
+  header.className = 'card-header';
+  article.appendChild(header);
+
+  const titleSpan = document.createElement('span');
+  titleSpan.className = 'editable-trigger';
+  titleSpan.tabIndex = 0;
+  titleSpan.id = `card-title-${data.id}-display`;
+  titleSpan.dataset.editable = 'card-title';
+  titleSpan.dataset.singleLine = '1';
+  titleSpan.dataset.url = data.urls.rename;
+  titleSpan.dataset.token = data.tokens.rename;
+  titleSpan.dataset.cardId = data.id;
+  titleSpan.dataset.companion = `#card-description-${data.id}-display`;
+  titleSpan.dataset.currentValue = data.title;
+  titleSpan.setAttribute('aria-label', 'Edit card title');
+  titleSpan.textContent = data.title;
+  header.appendChild(titleSpan);
+  setupInlineEditable(titleSpan);
+
+  const deleteForm = document.createElement('form');
+  deleteForm.action = data.urls.delete;
+  deleteForm.method = 'post';
+  deleteForm.className = 'delete-form';
+  header.appendChild(deleteForm);
+
+  const deleteToken = document.createElement('input');
+  deleteToken.type = 'hidden';
+  deleteToken.name = '_token';
+  deleteToken.value = data.tokens.delete;
+  deleteForm.appendChild(deleteToken);
+
+  const deleteButton = document.createElement('button');
+  deleteButton.type = 'submit';
+  deleteButton.className = 'icon-button delete-button';
+  deleteButton.setAttribute('aria-label', 'Delete card');
+  deleteButton.textContent = '\u00D7';
+  deleteForm.appendChild(deleteButton);
+
+  attachDeleteConfirm(deleteForm, 'Delete card?');
+
+  const body = document.createElement('div');
+  body.className = 'card-body';
+  article.appendChild(body);
+
+  const desc = document.createElement('p');
+  desc.id = `card-description-${data.id}-display`;
+  desc.className = 'editable-trigger card-description';
+  desc.tabIndex = 0;
+  desc.dataset.editable = 'card-description';
+  desc.dataset.multiline = '1';
+  desc.dataset.url = data.urls.rename;
+  desc.dataset.token = data.tokens.rename;
+  desc.dataset.cardId = data.id;
+  desc.dataset.companion = `#card-title-${data.id}-display`;
+  desc.dataset.placeholder = 'Click to add details';
+  desc.dataset.currentValue = data.description || '';
+  desc.setAttribute('aria-label', 'Edit card description');
+  body.appendChild(desc);
+  setupInlineEditable(desc);
+
+  return article;
+}
+
+function attachDeleteConfirm(form, message) {
+  if (!form || form.dataset.confirmAttached === '1') return;
+  form.dataset.confirmAttached = '1';
+  form.addEventListener('submit', evt => {
+    if (!confirm(message)) {
+      evt.preventDefault();
+    }
+  });
+}
 
 const inlineEditableElements = document.querySelectorAll('[data-editable]');
 inlineEditableElements.forEach(setupInlineEditable);
